@@ -1,0 +1,179 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Login Lab</title>
+<style>
+  /* Layout: single-column phone-app sim — three auth-flaw panels you operate by hand */
+  :root{
+    --bg:#f4f5f7; --surface:#ffffff; --surface-2:#eef0f4; --fg:#1a1d24; --muted:#687085;
+    --line:#d9dde5; --accent:#2f6df6; --accent-ink:#ffffff;
+    --danger:#c3123a; --danger-bg:#fdecef; --danger-line:#f3b6c4;
+    --ok:#0f7a3d; --ok-bg:#e8f6ed; --warn:#9a6700; --warn-bg:#fdf6e3;
+    --font:"Inter",system-ui,sans-serif; --display:"Space Grotesk",system-ui,sans-serif;
+    --code:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#181b22; --surface-2:#12151b; --fg:#e7e9ee; --muted:#8b93a4;
+    --line:#2a2f3a; --accent:#5a8bff; --accent-ink:#0b0d12;
+    --danger:#ff7a97; --danger-bg:#39141f; --danger-line:#5c2131;
+    --ok:#7fe0a3; --ok-bg:#14301f; --warn:#ffd77a; --warn-bg:#352c12; color-scheme:dark;
+  }}
+  :root[data-theme="dark"]{
+    --bg:#0f1115; --surface:#181b22; --surface-2:#12151b; --fg:#e7e9ee; --muted:#8b93a4;
+    --line:#2a2f3a; --accent:#5a8bff; --accent-ink:#0b0d12;
+    --danger:#ff7a97; --danger-bg:#39141f; --danger-line:#5c2131;
+    --ok:#7fe0a3; --ok-bg:#14301f; --warn:#ffd77a; --warn-bg:#352c12; color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--fg);font-family:var(--font);line-height:1.5;
+    padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0}
+  .wrap{max-width:540px;margin:0 auto;padding-block:18px 40px}
+  h1{font-family:var(--display);font-size:1.45rem;margin:0 0 2px;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:.82rem;margin:0 0 14px}
+  .warn-strip{background:#7a1f1f;color:#fff;font-size:.78rem;padding:7px 12px;border-radius:8px;margin-bottom:14px}
+  h2{font-family:var(--display);font-size:1rem;margin:0 0 10px;letter-spacing:-.01em}
+  .case{color:var(--accent);font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
+  .seed{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;
+    font-size:.78rem;color:var(--muted);margin-bottom:14px}
+  .seed b{color:var(--fg);font-family:var(--code)}
+  label{display:block;font-size:.78rem;color:var(--muted);margin:10px 0 4px}
+  input{width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--surface-2);
+    color:var(--fg);font:inherit}
+  button.go{margin-top:12px;border:0;background:var(--accent);color:var(--accent-ink);padding:10px 16px;
+    border-radius:9px;font:inherit;font-weight:600;cursor:pointer}
+  button.go:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .out{margin-top:12px}
+  .banner{padding:9px 11px;border-radius:9px;font-size:.82rem;margin-bottom:8px;border:1px solid}
+  .banner.bad{background:var(--danger-bg);color:var(--danger);border-color:var(--danger-line)}
+  .banner.good{background:var(--ok-bg);color:var(--ok);border-color:transparent}
+  .banner.warn{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+  .hint{font-size:.76rem;color:var(--muted);margin-top:8px}
+  .mono{font-family:var(--code);font-size:.82rem}
+  .link{font-family:var(--code);font-size:.8rem;word-break:break-all;background:var(--surface-2);
+    border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:8px}
+  .foot{margin-top:18px;font-size:.74rem;color:var(--muted)}
+  code{background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-family:var(--code);font-size:.82em}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<div class="wrap">
+  <div class="warn-strip">⚠ Vulnerable-by-design practice lab. Fake accounts only. Not a real login — learn to spot the flaws.</div>
+  <h1>Login Lab</h1>
+  <p class="sub">Authentication practice · Area 1 of the VAPT playbook. Weak passwords, email enumeration, and sloppy reset links.</p>
+
+  <div class="seed">Seeded accounts: <b>alice@example.com</b> / <b>Password123</b> · <b>bob@example.com</b> / <b>hunter2</b></div>
+
+  <!-- 1.1 weak password -->
+  <div class="card">
+    <div class="case">Case 1.1 · Weak password policy</div>
+    <h2>Create account</h2>
+    <label for="su-email">Email</label>
+    <input id="su-email" inputmode="email" autocomplete="off" placeholder="you@example.com">
+    <label for="su-pw">Password</label>
+    <input id="su-pw" autocomplete="off" placeholder="try 1, or password">
+    <button class="go" id="su-go">Create account</button>
+    <div class="out" id="su-out"></div>
+    <p class="hint">Sign up with <code>1</code> or <code>password</code> — it's accepted. A safe app enforces length + complexity.</p>
+  </div>
+
+  <!-- 1.2 enumeration -->
+  <div class="card">
+    <div class="case">Case 1.2 · Email enumeration</div>
+    <h2>Sign in</h2>
+    <label for="li-email">Email</label>
+    <input id="li-email" inputmode="email" autocomplete="off" value="alice@example.com">
+    <label for="li-pw">Password</label>
+    <input id="li-pw" autocomplete="off" placeholder="wrong on purpose">
+    <button class="go" id="li-go">Sign in</button>
+    <div class="out" id="li-out"></div>
+    <p class="hint">Compare a <em>known</em> email (<code>alice@example.com</code>) vs a random one — the message
+      tells you which accounts exist. (The real lab also leaks via response timing.)</p>
+  </div>
+
+  <!-- 1.3 reset link -->
+  <div class="card">
+    <div class="case">Case 1.3 · Reset link reuse / expiry</div>
+    <h2>Forgot password</h2>
+    <label for="fp-email">Email</label>
+    <input id="fp-email" inputmode="email" autocomplete="off" value="alice@example.com">
+    <button class="go" id="fp-go">Send reset link</button>
+    <div class="out" id="fp-out"></div>
+    <p class="hint">Only real accounts get a link (enumeration again). The token is a small <strong>sequential</strong>
+      number, never expires, and keeps working after use — tap <em>Use this link</em> twice.</p>
+  </div>
+
+  <p class="foot">Mirror of <span class="mono">login_lab.py</span>. Fixes: enforce a password policy; return a uniform
+    "if an account exists, we've emailed you" with constant timing; use long random single-use tokens with a short TTL,
+    invalidated on use and on re-issue. Log real findings in <span class="mono">03-findings-register.md</span>.</p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var USERS = { "alice@example.com":"Password123", "bob@example.com":"hunter2" };
+  var seq = 1000;                 // predictable reset token source
+  var tokens = {};                // token -> {email, used}
+  var $ = function(id){return document.getElementById(id);};
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+  function banner(kind,txt){return '<div class="banner '+kind+'">'+txt+'</div>';}
+  function norm(e){return (e||"").trim().toLowerCase();}
+
+  // 1.1 signup — accepts any password
+  $("su-go").addEventListener("click",function(){
+    var email=norm($("su-email").value), pw=$("su-pw").value, out=$("su-out");
+    if(!email || email.indexOf("@")<0){ out.innerHTML=banner("bad","Enter a valid email."); return; }
+    if(USERS.hasOwnProperty(email)){ out.innerHTML=banner("bad","That email is already in use. (enumeration leak)"); return; }
+    USERS[email]=pw;                        // FLAW 1.1 — no policy check at all
+    var weak = pw.length<8;
+    out.innerHTML = banner(weak?"bad":"good",
+      "Account created for "+esc(email)+" with a "+pw.length+"-character password"+
+      (weak?" — accepted with NO policy (weak-password flaw).":"."));
+  });
+
+  // 1.2 login — leaks account existence
+  $("li-go").addEventListener("click",function(){
+    var email=norm($("li-email").value), pw=$("li-pw").value, out=$("li-out");
+    if(!USERS.hasOwnProperty(email)){
+      out.innerHTML = banner("bad",'"No account found for that email." ')+
+        banner("warn","⚠ This message only appears for emails that DON'T exist — enumeration.");
+      return;
+    }
+    if(USERS[email]!==pw){
+      out.innerHTML = banner("bad",'"Incorrect password for that account." ')+
+        banner("warn","⚠ Different message than above = the account EXISTS. That's the leak.");
+      return;
+    }
+    out.innerHTML = banner("good","Signed in as "+esc(email)+". (demo — no real session)");
+  });
+
+  // 1.3 forgot + reset — predictable, non-expiring, reusable token
+  function resetPanel(token){
+    var t=tokens[token];
+    return '<div class="link">GET /reset?token='+token+'</div>'+
+      '<button class="go" data-tok="'+token+'" style="margin-top:8px">Use this link</button>'+
+      '<div id="r-'+token+'"></div>';
+  }
+  $("fp-go").addEventListener("click",function(){
+    var email=norm($("fp-email").value), out=$("fp-out");
+    if(!USERS.hasOwnProperty(email)){
+      out.innerHTML = banner("bad",'"No account with that email." ')+
+        banner("warn","⚠ Only real accounts get a link — enumeration via password reset.");
+      return;
+    }
+    seq += 1;                                // FLAW 1.3 — sequential, guessable
+    var token = String(seq);
+    tokens[token] = {email:email, used:false};   // FLAW 1.3 — no expiry, not single-use
+    out.innerHTML = banner("good","Reset link generated for "+esc(email)+" (token "+token+"):")+resetPanel(token);
+  });
+
+  // delegated handler for the "Use this link" buttons
+  $("fp-out").addEventListener("click",function(e){
+    var b=e.target.closest("[data-tok]"); if(!b) return;
+    var token=b.getAttribute("data-tok"), t=tokens[token], slot=$("r-"+token);
+    if(!t){ slot.innerHTML=banner("bad","Invalid or unknown token."); return; }
+    var reused = t.used; t.used=true;        // we DON'T delete it -> still valid (the flaw)
+    slot.innerHTML = banner(reused?"bad":"good",
+      (reused ? "⚠ Reused the SAME token — it still works. Secure apps consume it on first use."
+              : "Password for "+esc(t.email)+" reset. (Token NOT consumed — tap again to prove reuse.)"));
+  });
+})();
+</script>
