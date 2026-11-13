@@ -1,0 +1,205 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Cart Lab</title>
+<style>
+  /* Layout: single-column phone-app sim — a shop, a live cart, and an intercept panel */
+  :root{
+    --bg:#f4f5f7; --surface:#ffffff; --surface-2:#eef0f4; --fg:#1a1d24; --muted:#687085;
+    --line:#d9dde5; --accent:#2f6df6; --accent-ink:#ffffff;
+    --danger:#c3123a; --danger-bg:#fdecef; --danger-line:#f3b6c4;
+    --ok:#0f7a3d; --ok-bg:#e8f6ed;
+    --font:"Inter",system-ui,sans-serif; --display:"Space Grotesk",system-ui,sans-serif;
+    --code:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#181b22; --surface-2:#12151b; --fg:#e7e9ee; --muted:#8b93a4;
+    --line:#2a2f3a; --accent:#5a8bff; --accent-ink:#0b0d12;
+    --danger:#ff7a97; --danger-bg:#39141f; --danger-line:#5c2131;
+    --ok:#7fe0a3; --ok-bg:#14301f; color-scheme:dark;
+  }}
+  :root[data-theme="dark"]{
+    --bg:#0f1115; --surface:#181b22; --surface-2:#12151b; --fg:#e7e9ee; --muted:#8b93a4;
+    --line:#2a2f3a; --accent:#5a8bff; --accent-ink:#0b0d12;
+    --danger:#ff7a97; --danger-bg:#39141f; --danger-line:#5c2131;
+    --ok:#7fe0a3; --ok-bg:#14301f; color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--fg);font-family:var(--font);line-height:1.5;
+    padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0}
+  .wrap{max-width:540px;margin:0 auto;padding-block:18px 40px}
+  h1{font-family:var(--display);font-size:1.45rem;margin:0 0 2px;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:.82rem;margin:0 0 14px}
+  .warn-strip{background:#7a1f1f;color:#fff;font-size:.78rem;padding:7px 12px;border-radius:8px;margin-bottom:14px}
+  h2{font-family:var(--display);font-size:1rem;margin:0 0 8px;letter-spacing:-.01em}
+  .case{color:var(--accent);font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
+  table{width:100%;border-collapse:collapse;font-size:.86rem}
+  td,th{border-bottom:1px solid var(--line);padding:6px 6px;text-align:left} th{color:var(--muted);font-weight:600}
+  .tot td{border:0;padding:3px 6px} .grand{font-weight:700;font-size:1.05rem}
+  .neg{color:var(--danger)}
+  .shoprow{display:flex;align-items:center;gap:8px;justify-content:space-between;border-bottom:1px solid var(--line);padding:7px 0}
+  .shoprow:last-child{border-bottom:0}
+  button{border:0;background:var(--accent);color:var(--accent-ink);padding:7px 12px;border-radius:8px;font:inherit;font-weight:600;cursor:pointer}
+  button.ghost{background:var(--surface-2);color:var(--fg);border:1px solid var(--line);font-weight:500}
+  button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  label{display:block;font-size:.76rem;color:var(--muted);margin:9px 0 4px}
+  input,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--fg);font:inherit}
+  .row{display:flex;gap:8px} .row>div{flex:1;min-width:0}
+  .intercept{background:var(--surface-2);border:1px dashed var(--line);border-radius:9px;padding:10px;margin-top:10px}
+  .mono{font-family:var(--code);font-size:.8rem;word-break:break-all}
+  .banner{padding:9px 11px;border-radius:9px;font-size:.82rem;margin:8px 0;border:1px solid}
+  .banner.bad{background:var(--danger-bg);color:var(--danger);border-color:var(--danger-line)}
+  .banner.good{background:var(--ok-bg);color:var(--ok);border-color:transparent}
+  .hint{font-size:.76rem;color:var(--muted);margin-top:8px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{font-size:.74rem;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:4px 10px;cursor:pointer;color:var(--fg)}
+  code{background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-family:var(--code);font-size:.82em}
+  .foot{margin-top:18px;font-size:.74rem;color:var(--muted)}
+  a{color:var(--accent)}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<div class="wrap">
+  <div class="warn-strip">⚠ Vulnerable-by-design practice lab. Test-mode only, no real payment. Learn to spot cart-logic flaws.</div>
+  <h1>Cart Lab</h1>
+  <p class="sub">Checkout business-logic practice · Area 4. Tamper with price, quantity and discount codes, then watch the total.</p>
+
+  <!-- Shop + intercept -->
+  <div class="card">
+    <div class="case">Add to cart — the tamper point</div>
+    <h2>Shop</h2>
+    <div id="shop"></div>
+
+    <div class="intercept">
+      <div class="case" style="color:var(--muted)">Simulated add-to-cart request (edit it, like Burp Repeater)</div>
+      <div class="row" style="margin-top:6px">
+        <div><label for="t-prod">product</label>
+          <select id="t-prod"><option value="mug">mug</option><option value="shirt">shirt</option><option value="hat">hat</option></select></div>
+        <div><label for="t-qty">qty</label><input id="t-qty" inputmode="numeric" value="2"></div>
+        <div><label for="t-price">price (£)</label><input id="t-price" inputmode="decimal" value="0.01"></div>
+      </div>
+      <div class="mono" id="t-url" style="margin-top:8px"></div>
+      <button id="t-send" style="margin-top:8px">Send tampered add</button>
+      <div class="chips">
+        <span class="chip" data-t="mug|2|0.01">4.1 price → £0.01</span>
+        <span class="chip" data-t="shirt|-3|">4.2 qty → -3</span>
+        <span class="chip" data-t="hat|1|">normal add</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cart -->
+  <div class="card">
+    <div class="case">Cases 4.1–4.4 · Cart &amp; checkout</div>
+    <h2>Your cart</h2>
+    <div id="cart-msg"></div>
+    <table><thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Line</th></tr></thead><tbody id="cart-rows"></tbody></table>
+    <table style="margin-top:8px"><tbody id="cart-tot"></tbody></table>
+
+    <label for="code" style="margin-top:10px">Discount code</label>
+    <div class="row">
+      <div><input id="code" placeholder="SAVE10 / FIVEOFF"></div>
+      <button id="apply" style="align-self:stretch">Apply</button>
+    </div>
+    <div class="chips">
+      <span class="chip" data-code="SAVE10">apply SAVE10</span>
+      <span class="chip" data-code="FIVEOFF">apply FIVEOFF</span>
+    </div>
+    <div style="margin-top:12px"><button id="checkout">Checkout (test mode)</button>
+      <button class="ghost" id="clear">Clear</button></div>
+    <div id="checkout-out"></div>
+    <p class="hint">4.3: apply <code>SAVE10</code> several times — it stacks, no "one code per order" rule.</p>
+  </div>
+
+  <p class="foot">Mirror of <span class="mono">cart_lab.py</span>. Fix: recompute every price server-side from the catalogue,
+    reject qty &lt; 1, and enforce discount usage/stacking limits server-side. Never trust a client total.</p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var CATALOG={mug:{name:"Blue Mug",price:10.00},shirt:{name:"Logo Shirt",price:25.00},hat:{name:"Beanie",price:15.00}};
+  var CODES={SAVE10:{kind:"percent",value:10},FIVEOFF:{kind:"fixed",value:5}};
+  var cart={items:[],codes:[]};
+  var $=function(id){return document.getElementById(id);};
+  function money(x){return x<0?("-£"+(-x).toFixed(2)):("£"+x.toFixed(2));}
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+
+  function renderShop(){
+    $("shop").innerHTML=Object.keys(CATALOG).map(function(k){
+      var v=CATALOG[k];
+      return '<div class="shoprow"><span>'+esc(v.name)+' — £'+v.price.toFixed(2)+'</span>'+
+             '<button class="ghost" data-add="'+k+'">Add (real price)</button></div>';
+    }).join("");
+  }
+  function updateUrl(){
+    var p=$("t-prod").value,q=$("t-qty").value,pr=$("t-price").value;
+    $("t-url").textContent="GET /cart/add?product="+p+"&qty="+q+(pr!==""?("&price="+pr):"");
+  }
+  function totals(){
+    var sub=cart.items.reduce(function(a,i){return a+i.qty*i.price;},0);
+    var disc=cart.codes.reduce(function(a,c){var d=CODES[c];return a+(d.kind==="percent"?sub*d.value/100:d.value);},0);
+    return {sub:sub,disc:disc,total:sub-disc};
+  }
+  function renderCart(msg){
+    $("cart-msg").innerHTML=msg||"";
+    if(!cart.items.length){ $("cart-rows").innerHTML='<tr><td colspan="4" class="hint">Cart is empty.</td></tr>'; }
+    else{
+      $("cart-rows").innerHTML=cart.items.map(function(i){
+        var line=i.qty*i.price, neg=line<0?' class="neg"':'';
+        return '<tr><td>'+esc(CATALOG[i.product].name)+'</td><td>'+i.qty+'</td><td>£'+i.price.toFixed(2)+'</td><td'+neg+'>'+money(line)+'</td></tr>';
+      }).join("");
+    }
+    var t=totals(), tneg=t.total<0?' neg':'';
+    $("cart-tot").innerHTML=
+      '<tr class="tot"><td>Subtotal</td><td>'+money(t.sub)+'</td></tr>'+
+      '<tr class="tot"><td>Discounts ('+cart.codes.length+')</td><td>'+money(-t.disc)+'</td></tr>'+
+      '<tr class="tot grand'+tneg+'"><td>Total</td><td>'+money(t.total)+'</td></tr>';
+  }
+  function addItem(product,qty,price){
+    cart.items.push({product:product,qty:parseInt(qty,10)||0,price:(price===""||price==null)?CATALOG[product].price:parseFloat(price)});
+  }
+
+  // shop "real price" add buttons
+  $("shop").addEventListener("click",function(e){
+    var b=e.target.closest("[data-add]"); if(!b) return;
+    addItem(b.getAttribute("data-add"),1,""); renderCart();
+  });
+  // intercept panel
+  ["t-prod","t-qty","t-price"].forEach(function(id){$(id).addEventListener("input",updateUrl);});
+  $("t-send").addEventListener("click",function(){
+    addItem($("t-prod").value,$("t-qty").value,$("t-price").value);
+    var real=CATALOG[$("t-prod").value].price, used=$("t-price").value;
+    var tampered=(used!==""&&parseFloat(used)!==real)||(parseInt($("t-qty").value,10)<1);
+    renderCart(tampered?'<div class="banner bad">⚠ Server accepted your client-supplied values — tampered line added.</div>'
+                       :'<div class="banner good">Item added at the real price.</div>');
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-t]"),function(c){
+    c.addEventListener("click",function(){
+      var p=c.getAttribute("data-t").split("|");
+      $("t-prod").value=p[0];$("t-qty").value=p[1];$("t-price").value=p[2]; updateUrl();
+    });
+  });
+  // discounts
+  function apply(code){
+    code=(code||"").toUpperCase();
+    if(!CODES[code]){ renderCart('<div class="banner bad">Unknown code.</div>'); return; }
+    cart.codes.push(code);
+    renderCart('<div class="banner good">Applied '+code+'. Codes on cart: '+cart.codes.join(", ")+
+      (cart.codes.filter(function(x){return x===code;}).length>1?' — reused/stacked!':'')+'</div>');
+  }
+  $("apply").addEventListener("click",function(){apply($("code").value);});
+  Array.prototype.forEach.call(document.querySelectorAll("[data-code]"),function(c){
+    c.addEventListener("click",function(){apply(c.getAttribute("data-code"));});
+  });
+  // checkout / clear
+  $("checkout").addEventListener("click",function(){
+    var t=totals();
+    var warn=t.total<=0?'<div class="banner bad">⚠ Total is £0 or negative — store ships free / owes the buyer.</div>':'';
+    $("checkout-out").innerHTML=warn+'<div class="banner '+(t.total<=0?"bad":"good")+'">Test-mode charge: '+money(t.total)+
+      ' (subtotal '+money(t.sub)+', discounts '+money(-t.disc)+'). No real card processed.</div>';
+  });
+  $("clear").addEventListener("click",function(){cart={items:[],codes:[]};$("checkout-out").innerHTML="";renderCart();});
+
+  renderShop(); updateUrl(); renderCart();
+})();
+</script>
