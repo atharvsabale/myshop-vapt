@@ -9,6 +9,7 @@ playbook test cases safely, offline, without touching `test.myshopapps.com`.
 |-----|------|-----|
 | `login_lab.py` | 1 — Authentication | `python3 login_lab.py` → http://127.0.0.1:8000 |
 | `idor_lab.py` | 2 — Access control (IDOR) | `python3 idor_lab.py` → http://127.0.0.1:8001 |
+| `xss_lab.py` | 3 — Input validation (XSS/injection) | `python3 xss_lab.py` → http://127.0.0.1:8002 |
 
 ---
 
@@ -84,3 +85,39 @@ Each flaw is labelled `# FLAW 2.x` in `idor_lab.py`. The fix in every case is a
 client. Once you can spot and prove these locally, run the same id-swapping
 technique against the real store's order/account/custom-app endpoints per the
 playbook, then record findings in `../03-findings-register.md`.
+
+---
+
+# XSS Lab — Area 3 (input validation)
+
+Five input surfaces, each with an intentional flaw, so you can see exactly where
+output-encoding is missing.
+
+## Run
+
+```bash
+python3 xss_lab.py          # http://127.0.0.1:8002
+python3 xss_lab.py 8089     # custom port
+```
+
+## What to try (mapped to the playbook)
+
+| Playbook case | How to see the flaw |
+|---------------|---------------------|
+| **3.1 Reflected XSS** | `/search?q=<script>alert(1)</script>` — the query is echoed into the page unescaped. |
+| **3.2 Stored XSS** | Post a review with body `<img src=x onerror=alert(1)>` → it fires for everyone who later opens `/reviews`. |
+| **3.3 Attribute / HTML injection** | `/greet?name=x onmouseover=alert(1) y` → value lands in an **unquoted** attribute, so no `<>` needed. |
+| **3.4 Server-side template injection** | `/render?t={{7*7}}` → prints `49`, proving input reached a template engine. |
+| **3.5 Open redirect** | `/go?next=https://example.com` → 302 off-site with no allow-list. |
+
+> Safety: the SSTI demo only evaluates a whitelisted arithmetic grammar
+> (`[0-9 +-*/()]`), so `{{7*7}}` shows `49` but no real code runs on your machine —
+> `{{__import__("os")}}` is left as literal text.
+
+## The point
+
+Each flaw is labelled `# FLAW 3.x` in `xss_lab.py`. The fix is **context-aware
+output encoding** (HTML-escape on output, quote attributes, never render user input
+through a template engine) plus a strict CSP as defence-in-depth. Prove the
+technique here, then try it against the real store's search/forms/reviews per the
+playbook and log findings in `../03-findings-register.md`.
