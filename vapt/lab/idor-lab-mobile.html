@@ -1,0 +1,244 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>IDOR Lab</title>
+<style>
+  /* Layout: single-column phone-app sim — identity bar on top, explorable flaw panels below */
+  :root{
+    --bg:#f4f5f7; --surface:#ffffff; --surface-2:#eef0f4; --fg:#1a1d24; --muted:#687085;
+    --line:#d9dde5; --accent:#2f6df6; --accent-ink:#ffffff;
+    --danger:#c3123a; --danger-bg:#fdecef; --danger-line:#f3b6c4;
+    --ok:#0f7a3d; --ok-bg:#e8f6ed; --mono:#11141a;
+    --font:"Inter",system-ui,sans-serif; --display:"Space Grotesk",system-ui,sans-serif;
+    --code:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#181b22; --surface-2:#12151b; --fg:#e7e9ee; --muted:#8b93a4;
+    --line:#2a2f3a; --accent:#5a8bff; --accent-ink:#0b0d12;
+    --danger:#ff7a97; --danger-bg:#39141f; --danger-line:#5c2131;
+    --ok:#7fe0a3; --ok-bg:#14301f; --mono:#cbd3e1; color-scheme:dark;
+  }}
+  :root[data-theme="dark"]{
+    --bg:#0f1115; --surface:#181b22; --surface-2:#12151b; --fg:#e7e9ee; --muted:#8b93a4;
+    --line:#2a2f3a; --accent:#5a8bff; --accent-ink:#0b0d12;
+    --danger:#ff7a97; --danger-bg:#39141f; --danger-line:#5c2131;
+    --ok:#7fe0a3; --ok-bg:#14301f; --mono:#cbd3e1; color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--fg);font-family:var(--font);line-height:1.5;
+    padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+    padding-block:0}
+  .wrap{max-width:540px;margin:0 auto;padding-block:18px 40px}
+  h1{font-family:var(--display);font-size:1.45rem;margin:0 0 2px;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:.82rem;margin:0 0 16px}
+  .warn-strip{background:#7a1f1f;color:#fff;font-size:.78rem;padding:7px 12px;border-radius:8px;margin-bottom:14px}
+  h2{font-family:var(--display);font-size:1rem;margin:0 0 4px;letter-spacing:-.01em}
+  .case{color:var(--accent);font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
+  .idbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);
+    border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
+  .idbar .lab{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg button{flex:1;min-width:90px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);
+    padding:9px 8px;border-radius:9px;font:inherit;font-size:.82rem;cursor:pointer}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .who{margin-top:9px;font-size:.8rem;color:var(--muted)}
+  .who b{color:var(--fg)}
+  label{display:block;font-size:.78rem;color:var(--muted);margin:10px 0 4px}
+  .row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+  .row>div{flex:1;min-width:0}
+  input{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface-2);
+    color:var(--fg);font:inherit}
+  button.go{border:0;background:var(--accent);color:var(--accent-ink);padding:10px 14px;border-radius:9px;
+    font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+  button.go:focus-visible,input:focus-visible,.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .out{margin-top:12px;font-size:.88rem}
+  .banner{padding:9px 11px;border-radius:9px;font-size:.82rem;margin-bottom:10px;border:1px solid}
+  .banner.bad{background:var(--danger-bg);color:var(--danger);border-color:var(--danger-line)}
+  .banner.good{background:var(--ok-bg);color:var(--ok);border-color:transparent}
+  table{width:100%;border-collapse:collapse;font-size:.86rem}
+  td,th{border-bottom:1px solid var(--line);padding:6px 6px;text-align:left}
+  th{color:var(--muted);font-weight:600}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{font-size:.74rem;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;
+    padding:3px 9px;cursor:pointer;color:var(--fg)}
+  pre{background:var(--mono);color:#dfe6f2;border-radius:9px;padding:11px;overflow-x:auto;font-family:var(--code);
+    font-size:.78rem;margin:0}
+  :root:not([data-theme="dark"]) pre{background:#11141a}
+  .hint{font-size:.76rem;color:var(--muted);margin-top:8px}
+  .mono{font-family:var(--code);font-size:.82rem}
+  a{color:var(--accent)}
+  .foot{margin-top:18px;font-size:.74rem;color:var(--muted)}
+  @media (prefers-reduced-motion:no-preference){.banner{transition:background .2s}}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<div class="wrap">
+  <div class="warn-strip">⚠ Vulnerable-by-design practice lab. Fake data only (Alice &amp; Bob). Not a real system — learn to spot IDOR.</div>
+  <h1>IDOR Lab</h1>
+  <p class="sub">Access-control practice · Area 2 of the VAPT playbook. Pick an identity, then try to reach the <em>other</em> user's data.</p>
+
+  <div class="idbar">
+    <div class="lab">Signed in as</div>
+    <div class="seg" id="ident">
+      <button data-id="0" aria-pressed="false">Logged out</button>
+      <button data-id="1001" aria-pressed="true">Alice · 1001</button>
+      <button data-id="1002" aria-pressed="false">Bob · 1002</button>
+    </div>
+    <div class="who" id="who"></div>
+  </div>
+
+  <!-- 2.1 Orders IDOR -->
+  <div class="card">
+    <div class="case">Case 2.1 · Orders IDOR</div>
+    <h2>Open an order by ID</h2>
+    <div class="row">
+      <div><label for="oid">Order ID</label><input id="oid" inputmode="numeric" value="5001"></div>
+      <button class="go" id="oidGo">Open</button>
+    </div>
+    <div class="chips">
+      <span class="chip" data-oid="5001">5001 (Alice)</span>
+      <span class="chip" data-oid="5002">5002 (Bob)</span>
+      <span class="chip" data-oid="5003">5003 (Alice)</span>
+      <span class="chip" data-oid="5004">5004 (Bob)</span>
+    </div>
+    <div class="out" id="oidOut"></div>
+    <p class="hint">Sign in as Alice, then open <span class="mono">5002</span> — no ownership check, so Bob's order opens.</p>
+  </div>
+
+  <!-- 2.2 Account IDOR -->
+  <div class="card">
+    <div class="case">Case 2.2 · Account / profile IDOR</div>
+    <h2>View a profile by ID</h2>
+    <div class="row">
+      <div><label for="aid">Customer ID</label><input id="aid" inputmode="numeric" value="1001"></div>
+      <button class="go" id="aidGo">View</button>
+    </div>
+    <div class="chips">
+      <span class="chip" data-aid="1001">1001 (Alice)</span>
+      <span class="chip" data-aid="1002">1002 (Bob)</span>
+    </div>
+    <div class="out" id="aidOut"></div>
+    <p class="hint">As Alice, view <span class="mono">1002</span> — the server trusts the id in the URL, so you read Bob's profile.</p>
+  </div>
+
+  <!-- 2.3 Custom-app endpoint, no auth -->
+  <div class="card">
+    <div class="case">Case 2.3 · Custom-app endpoint (no auth)</div>
+    <h2>Call /api/order</h2>
+    <div class="row">
+      <div><label for="api">GET /api/order?id=</label><input id="api" inputmode="numeric" value="5001"></div>
+      <button class="go" id="apiGo">Send</button>
+    </div>
+    <div class="out" id="apiOut"></div>
+    <p class="hint">This endpoint checks <strong>no</strong> session. Switch to <strong>Logged out</strong> and it still returns full order JSON — walk the ids.</p>
+  </div>
+
+  <!-- 2.4 Forced browsing -->
+  <div class="card">
+    <div class="case">Case 2.4 · Forced browsing</div>
+    <h2>/apps/rewards/admin</h2>
+    <button class="go" id="admGo">Open admin page</button>
+    <div class="out" id="admOut"></div>
+    <p class="hint">A custom-app "admin" page with no role check — any visitor loads it and dumps every customer.</p>
+  </div>
+
+  <p class="foot">Mirror of <span class="mono">idor_lab.py</span>. Fix for all four: a server-side ownership/role check on the object — never trust an id or role from the client. Record real findings in <span class="mono">03-findings-register.md</span>.</p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var CUSTOMERS = {
+    1001:{email:"alice@example.com",name:"Alice Anderson",address:"1 Rose Ln",phone:"555-0101"},
+    1002:{email:"bob@example.com",name:"Bob Brown",address:"2 Oak St",phone:"555-0202"}
+  };
+  var ORDERS = {
+    5001:{customer:1001,total:"£42.00",items:"Blue Mug ×2",card:"4242"},
+    5002:{customer:1002,total:"£17.50",items:"Notebook ×1",card:"1881"},
+    5003:{customer:1001,total:"£99.99",items:"Headphones ×1",card:"4242"},
+    5004:{customer:1002,total:"£8.00",items:"Stickers ×4",card:"1881"}
+  };
+  var me = 1001;
+  var $ = function(id){return document.getElementById(id);};
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+  function banner(bad,txt){return '<div class="banner '+(bad?"bad":"good")+'">'+esc(txt)+'</div>';}
+
+  function renderWho(){
+    if(me===0){ $("who").innerHTML = "Not signed in — any request below runs <b>anonymously</b>."; }
+    else { $("who").innerHTML = "You are <b>"+esc(CUSTOMERS[me].name)+"</b> (customer "+me+"). Your orders: "+
+      Object.keys(ORDERS).filter(function(o){return ORDERS[o].customer===me;}).join(", ")+"."; }
+  }
+
+  // identity switch
+  Array.prototype.forEach.call(document.querySelectorAll("#ident button"),function(b){
+    b.addEventListener("click",function(){
+      me = parseInt(b.getAttribute("data-id"),10);
+      Array.prototype.forEach.call(document.querySelectorAll("#ident button"),function(x){
+        x.setAttribute("aria-pressed", x===b ? "true":"false");
+      });
+      renderWho();
+    });
+  });
+
+  // 2.1 orders
+  function openOrder(){
+    var id = parseInt($("oid").value,10), o = ORDERS[id], out=$("oidOut");
+    if(me===0){ out.innerHTML = banner(true,"Not signed in — a secure app would send you to login."); return; }
+    if(!o){ out.innerHTML = banner(true,"No such order."); return; }
+    var foreign = o.customer !== me;
+    out.innerHTML =
+      (foreign ? banner(true,"⚠ Order #"+id+" belongs to customer "+o.customer+", not you — IDOR!")
+               : banner(false,"✓ Your own order."))+
+      '<table><tr><th>Items</th><td>'+esc(o.items)+'</td></tr>'+
+      '<tr><th>Total</th><td>'+esc(o.total)+'</td></tr>'+
+      '<tr><th>Card</th><td>•••• '+esc(o.card)+'</td></tr>'+
+      '<tr><th>Owner</th><td>customer '+o.customer+'</td></tr></table>';
+  }
+  $("oidGo").addEventListener("click",openOrder);
+  Array.prototype.forEach.call(document.querySelectorAll("[data-oid]"),function(c){
+    c.addEventListener("click",function(){ $("oid").value=c.getAttribute("data-oid"); openOrder(); });
+  });
+
+  // 2.2 account
+  function viewAccount(){
+    var id = parseInt($("aid").value,10), c = CUSTOMERS[id], out=$("aidOut");
+    if(me===0){ out.innerHTML = banner(true,"Not signed in."); return; }
+    if(!c){ out.innerHTML = banner(true,"No such customer."); return; }
+    var foreign = id !== me;
+    out.innerHTML =
+      (foreign ? banner(true,"⚠ Viewing customer "+id+", not yourself — IDOR (you could edit this too)!")
+               : banner(false,"✓ Your own profile."))+
+      '<table><tr><th>Name</th><td>'+esc(c.name)+'</td></tr>'+
+      '<tr><th>Email</th><td>'+esc(c.email)+'</td></tr>'+
+      '<tr><th>Address</th><td>'+esc(c.address)+'</td></tr>'+
+      '<tr><th>Phone</th><td>'+esc(c.phone)+'</td></tr></table>';
+  }
+  $("aidGo").addEventListener("click",viewAccount);
+  Array.prototype.forEach.call(document.querySelectorAll("[data-aid]"),function(c){
+    c.addEventListener("click",function(){ $("aid").value=c.getAttribute("data-aid"); viewAccount(); });
+  });
+
+  // 2.3 api (no auth)
+  $("apiGo").addEventListener("click",function(){
+    var id = parseInt($("api").value,10), o = ORDERS[id], out=$("apiOut");
+    var note = banner(me===0, me===0
+      ? "Request sent with NO session — endpoint answers anyway. That's the bug."
+      : "Endpoint ignores your session entirely; it would answer the same logged out.");
+    if(!o){ out.innerHTML = note+'<pre>HTTP 404\n{"error":"not found"}</pre>'; return; }
+    var body = {order_id:id, customer:o.customer, total:o.total, items:o.items, card_last4:o.card};
+    out.innerHTML = note+'<pre>HTTP 200  Content-Type: application/json\n'+esc(JSON.stringify(body,null,2))+'</pre>';
+  });
+
+  // 2.4 forced browsing
+  $("admGo").addEventListener("click",function(){
+    var rows = Object.keys(CUSTOMERS).map(function(id){
+      var c=CUSTOMERS[id];
+      return '<tr><td>'+id+'</td><td>'+esc(c.email)+'</td><td>'+esc(c.name)+'</td><td>'+esc(c.phone)+'</td></tr>';
+    }).join("");
+    $("admOut").innerHTML = banner(true,"⚠ No role check — "+(me===0?"loaded while logged out":"loaded as an ordinary customer")+
+      " (forced browsing / broken access control).")+
+      '<table><tr><th>ID</th><th>Email</th><th>Name</th><th>Phone</th></tr>'+rows+'</table>';
+  });
+
+  renderWho();
+})();
+</script>
